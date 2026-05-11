@@ -86,14 +86,43 @@ function renderPicker() {
     card.className = 'photo-card';
     card.dataset.photoId = p.photo_id;
     card.dataset.index = i;
+    // Thumbnail légère (~20 KB) pour ne pas saturer la queue de connexions Chrome
+    // vers lh3.googleusercontent.com (limite ~6 parallèles par domaine). Sans lazy
+    // pour que toutes les vignettes commencent à charger en même temps.
+    const thumbUrl = toThumbRes(p.original_url);
     card.innerHTML = `
-      <img src="${p.url}" alt="" loading="lazy">
+      <img src="${thumbUrl}" alt="" decoding="async" fetchpriority="high">
       <span class="num">${i + 1}</span>
       <span class="kind">${p.kind}</span>
     `;
     card.addEventListener('click', () => openCropModal(i));
     grid.appendChild(card);
   });
+
+  // Précharge en arrière-plan la full-res (=s0) de chaque photo via le proxy.
+  // Comme ça, quand l'user clique une vignette, la modale a déjà l'image en cache
+  // navigateur → crop ouvre instantanément.
+  preloadFullRes(photos);
+}
+
+function toThumbRes(url) {
+  const eq = url.indexOf('=');
+  return (eq === -1 ? url : url.slice(0, eq)) + '=w480-h270-k-no';
+}
+
+// Annule les preloads en cours d'un salon précédent
+let preloadAbortController = null;
+function preloadFullRes(photos) {
+  if (preloadAbortController) preloadAbortController.abort();
+  preloadAbortController = new AbortController();
+  const signal = preloadAbortController.signal;
+  for (const p of photos) {
+    const sourceUrl = toOriginalRes(p.original_url);
+    const proxiedUrl = '/proxy-image?url=' + encodeURIComponent(sourceUrl);
+    // fire-and-forget : on s'en fiche de la réponse, on veut juste que le browser
+    // (et notre cache server-side) ait l'image prête pour le clic ultérieur.
+    fetch(proxiedUrl, { signal, mode: 'no-cors', credentials: 'same-origin' }).catch(() => {});
+  }
 }
 
 function show(sectionId) {
