@@ -5,12 +5,26 @@
 import express from 'express';
 import session from 'express-session';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, createReadStream, statSync, writeFileSync } from 'node:fs';
 import db from './src/db.js';
 import { requireAuth, loginHandler, logoutHandler, whoamiHandler } from './src/auth.js';
 import { syncSalon, keepDefaultHero } from './src/sync.js';
 import { isOutilDbAvailable, getOutilDbPath, countSalonsWithPickerHero, findSalonByGoogleId } from './src/outil-db.js';
 import { HERO_DIMENSIONS } from './src/cropper.js';
+
+// Cache disque pour /proxy-image : les URLs Google CDN /gps-cs-s/, /geougc/, /p/
+// sont permanentes (cf. POC), donc on peut cacher indéfiniment. Première vue d'un
+// salon = 1 fetch Google. Vues suivantes par tes amis = 0 fetch Google, sert depuis disque.
+const PROXY_CACHE_DIR = resolve(process.env.PROXY_CACHE_DIR || './data/proxy-cache');
+mkdirSync(PROXY_CACHE_DIR, { recursive: true });
+function proxyCachePath(url) {
+  // SHA-256 du URL → chemin filesystem-safe + nesting léger pour éviter milliers de fichiers
+  // dans un seul dossier (ext4 ralentit au-delà de ~10k entrées).
+  const h = createHash('sha256').update(url).digest('hex');
+  return join(PROXY_CACHE_DIR, h.slice(0, 2), h + '.bin');
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '4000', 10);
@@ -50,12 +64,29 @@ app.get('/proxy-image', requireAuth, async (req, res) => {
   if (!/^https:\/\/lh\d\.googleusercontent\.com\//.test(target)) {
     return res.status(400).json({ error: 'URL non autorisée (allowlist Google CDN uniquement)' });
   }
+
+  const cachePath = proxyCachePath(target);
+  // HIT cache disque → on stream directement, pas de fetch Google
+  if (existsSync(cachePath)) {
+    res.set('Content-Type', 'image/jpeg');
+    res.set('Cache-Control', 'public, max-age=86400, immutable');
+    res.set('X-Cache', 'HIT');
+    res.set('Content-Length', String(statSync(cachePath).size));
+    return createReadStream(cachePath).pipe(res);
+  }
+
   try {
     const upstream = await fetch(target);
     if (!upstream.ok) return res.status(upstream.status).end();
-    res.set('Content-Type', upstream.headers.get('content-type') || 'image/jpeg');
-    res.set('Cache-Control', 'public, max-age=3600');
     const buf = Buffer.from(await upstream.arrayBuffer());
+    // Sauve sur disque pour les prochains hits (best-effort, on swallow l'erreur)
+    try {
+      mkdirSync(dirname(cachePath), { recursive: true });
+      writeFileSync(cachePath, buf);
+    } catch (_) {}
+    res.set('Content-Type', upstream.headers.get('content-type') || 'image/jpeg');
+    res.set('Cache-Control', 'public, max-age=86400, immutable');
+    res.set('X-Cache', 'MISS');
     res.send(buf);
   } catch (e) {
     res.status(502).json({ error: e.message });

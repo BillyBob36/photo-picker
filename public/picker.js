@@ -99,30 +99,11 @@ function renderPicker() {
     grid.appendChild(card);
   });
 
-  // Précharge en arrière-plan la full-res (=s0) de chaque photo via le proxy.
-  // Comme ça, quand l'user clique une vignette, la modale a déjà l'image en cache
-  // navigateur → crop ouvre instantanément.
-  preloadFullRes(photos);
 }
 
 function toThumbRes(url) {
   const eq = url.indexOf('=');
   return (eq === -1 ? url : url.slice(0, eq)) + '=w480-h270-k-no';
-}
-
-// Annule les preloads en cours d'un salon précédent
-let preloadAbortController = null;
-function preloadFullRes(photos) {
-  if (preloadAbortController) preloadAbortController.abort();
-  preloadAbortController = new AbortController();
-  const signal = preloadAbortController.signal;
-  for (const p of photos) {
-    const sourceUrl = toOriginalRes(p.original_url);
-    const proxiedUrl = '/proxy-image?url=' + encodeURIComponent(sourceUrl);
-    // fire-and-forget : on s'en fiche de la réponse, on veut juste que le browser
-    // (et notre cache server-side) ait l'image prête pour le clic ultérieur.
-    fetch(proxiedUrl, { signal, mode: 'no-cors', credentials: 'same-origin' }).catch(() => {});
-  }
 }
 
 function show(sectionId) {
