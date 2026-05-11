@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Photo Picker — Login</title>
+  <link rel="stylesheet" href="/static/picker.css">
+</head>
+<body class="login-body">
+  <main class="login-card">
+    <h1>Photo Picker</h1>
+    <p class="muted">Tri des photos hero des salons coiffeurs.</p>
+    <form id="login-form" autocomplete="off">
+      <label>
+        Ton prénom
+        <input type="text" name="name" required maxlength="40" placeholder="ex: jean">
+      </label>
+      <label>
+        Mot de passe
+        <input type="password" name="password" required>
+      </label>
+      <button type="submit">Entrer</button>
+      <p class="error" id="error" hidden></p>
+    </form>
+  </main>
+  <script>
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const body = {
+        name: form.name.value.trim(),
+        password: form.password.value,
+      };
+      const errEl = document.getElementById('error');
+      errEl.hidden = true;
+      try {
+        const res = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          errEl.textContent = j.error || `Erreur ${res.status}`;
+          errEl.hidden = false;
+          return;
+        }
+        location.href = '/';
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.hidden = false;
+      }
+    });
+  </script>
+</body>
+</html>

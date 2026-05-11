@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Photo Picker</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
+  <link rel="stylesheet" href="/static/picker.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Photo Picker</h1>
+    <div class="topbar-right">
+      <span id="stats" class="stats muted">…</span>
+      <span id="user" class="muted"></span>
+      <button id="logout" class="btn-ghost">Logout</button>
+    </div>
+  </header>
+
+  <main id="app">
+    <section id="loader" class="centered">
+      <p>Chargement…</p>
+    </section>
+
+    <section id="done-screen" class="centered" hidden>
+      <h2>Plus rien à trier 🎉</h2>
+      <p class="muted">Reviens plus tard quand tu auras importé d'autres CSV ou scrapé d'autres départements.</p>
+      <button id="refresh">Rafraîchir</button>
+    </section>
+
+    <section id="picker" hidden>
+      <header class="salon-header">
+        <div class="salon-info">
+          <h2 id="salon-name"></h2>
+          <p class="muted">
+            <span id="salon-address"></span>
+            · <a id="salon-maps" target="_blank" rel="noopener">Voir sur Maps</a>
+            · <span id="salon-source" class="tag"></span>
+          </p>
+        </div>
+        <div class="salon-actions">
+          <button id="skip-btn" class="btn-ghost" title="Skip (S)">Skip ce salon</button>
+        </div>
+      </header>
+
+      <p class="muted small">
+        Clique sur une photo pour la valider. Tu pourras ajuster le rectangle de crop (16:9, 1920×1080) avant de confirmer.
+        Dans la modale : <kbd>←</kbd> <kbd>→</kbd> pour naviguer entre photos, <kbd>D</kbd> pour garder l'image par défaut,
+        <kbd>Esc</kbd> pour fermer, <kbd>Ctrl</kbd>+<kbd>Enter</kbd> pour valider. Grille : <kbd>1</kbd>…<kbd>9</kbd> pour
+        sélectionner, <kbd>S</kbd> pour skip.
+      </p>
+
+      <div id="photos-grid" class="photos-grid"></div>
+    </section>
+
+    <!-- Modale crop -->
+    <div id="crop-modal" class="modal" hidden>
+      <div class="modal-card">
+        <header class="modal-header">
+          <h3>Ajuste le crop hero (1920×1080)</h3>
+          <div class="modal-nav">
+            <button id="crop-prev" class="btn-ghost" title="Précédente (←)" aria-label="Précédente">←</button>
+            <span id="crop-counter" class="muted small"></span>
+            <button id="crop-next" class="btn-ghost" title="Suivante (→)" aria-label="Suivante">→</button>
+          </div>
+          <button id="crop-close" class="btn-ghost" title="Fermer (Esc)" aria-label="Fermer">×</button>
+        </header>
+        <div class="cropper-wrap">
+          <img id="crop-img" alt="">
+        </div>
+        <footer class="modal-footer">
+          <button id="keep-default" class="btn-ghost" title="Garder l'image par défaut (D)">
+            Garder l'image par défaut
+          </button>
+          <div class="footer-spacer"></div>
+          <button id="crop-cancel" class="btn-ghost">Annuler</button>
+          <button id="crop-confirm" class="btn-primary">Valider et appliquer →</button>
+        </footer>
+        <p id="crop-status" class="status" hidden></p>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
+  <script src="/static/picker.js" type="module"></script>
+</body>
+</html>
