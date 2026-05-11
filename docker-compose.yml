@@ -1,0 +1,29 @@
+# Coolify docker-compose deployment.
+# On utilise un volume Docker nommé externe `outil-coiffure-data` déjà existant
+# (mounté en /data par l'app outil-coiffure) pour partager salons.db,
+# screenshots/, hero-images/ et notre photo-picker.db.
+
+services:
+  photo-picker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - PICKER_DB_PATH=/data/photo-picker.db
+      - OUTIL_DB_PATH=/data/salons.db
+      - HERO_IMAGES_DIR=/data/hero-images
+      - SCREENSHOTS_DIR=/data/screenshots
+      - SITE_PUBLIC_URL=https://monsitehq.com
+      # PICKER_PASSWORD et SESSION_SECRET sont passés par Coolify (panneau env vars)
+    volumes:
+      - outil-coiffure-data:/data
+
+volumes:
+  outil-coiffure-data:
+    external: true
+    name: outil-coiffure-data
