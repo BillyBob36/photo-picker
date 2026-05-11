@@ -25,3 +25,30 @@ services:
       # PICKER_PASSWORD et SESSION_SECRET sont passés par Coolify (panneau env vars)
     volumes:
       - /var/lib/docker/volumes/outil-coiffure-data/_data:/data
+    # Labels Traefik manuels : Coolify ne les auto-génère pas en compose mode pour
+    # les services qui ne déclarent pas explicitement leur FQDN. On copie le pattern
+    # d'outil-coiffure pour router picker.monsitehq.com → port 4000 + redirect http→https.
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.middlewares.gzip-jcw0.compress=true"
+      - "traefik.http.middlewares.redirect-to-https-jcw0.redirectscheme.scheme=https"
+      # HTTP → redirect HTTPS
+      - "traefik.http.routers.http-picker.entryPoints=http"
+      - "traefik.http.routers.http-picker.rule=Host(`picker.monsitehq.com`)"
+      - "traefik.http.routers.http-picker.middlewares=redirect-to-https-jcw0"
+      - "traefik.http.routers.http-picker.service=https-picker"
+      # HTTPS
+      - "traefik.http.routers.https-picker.entryPoints=https"
+      - "traefik.http.routers.https-picker.rule=Host(`picker.monsitehq.com`)"
+      - "traefik.http.routers.https-picker.tls=true"
+      - "traefik.http.routers.https-picker.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.https-picker.middlewares=gzip-jcw0"
+      - "traefik.http.routers.https-picker.service=https-picker"
+      # Service → port interne du container
+      - "traefik.http.services.https-picker.loadbalancer.server.port=4000"
+    networks:
+      - coolify
+
+networks:
+  coolify:
+    external: true
